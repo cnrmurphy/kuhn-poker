@@ -15,6 +15,8 @@ pub trait Player {
         pot: u64,
         antes: u64,
     ) -> PlayerAction;
+
+    fn name(&self) -> &str;
 }
 
 pub struct Client {
@@ -37,6 +39,10 @@ impl Player for Client {
     ) -> PlayerAction {
         let choice = Select::new("Choose action: ", actions).prompt().unwrap();
         return choice;
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -64,5 +70,9 @@ impl Player for Fish {
     ) -> PlayerAction {
         let action = actions.choose(&mut self.rng).unwrap();
         return *action;
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }
