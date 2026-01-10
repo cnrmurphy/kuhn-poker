@@ -7,6 +7,12 @@ use rand::{
 
 use crate::PlayerAction;
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum PlayerKind {
+    Agent,
+    Client,
+}
+
 pub trait Player {
     fn select_action(
         &mut self,
@@ -17,15 +23,21 @@ pub trait Player {
     ) -> PlayerAction;
 
     fn name(&self) -> &str;
+
+    fn player_kind(&self) -> &PlayerKind;
 }
 
 pub struct Client {
     name: String,
+    player_kind: PlayerKind,
 }
 
 impl Client {
     pub fn new(name: String) -> Self {
-        return Self { name };
+        return Self {
+            name,
+            player_kind: PlayerKind::Client,
+        };
     }
 }
 
@@ -44,11 +56,16 @@ impl Player for Client {
     fn name(&self) -> &str {
         &self.name
     }
+
+    fn player_kind(&self) -> &PlayerKind {
+        return &self.player_kind;
+    }
 }
 
 pub struct Fish {
     name: String,
     rng: ThreadRng,
+    player_kind: PlayerKind,
 }
 
 impl Fish {
@@ -56,6 +73,7 @@ impl Fish {
         return Self {
             name: String::from("Fish"),
             rng: rng(),
+            player_kind: PlayerKind::Agent,
         };
     }
 }
@@ -74,5 +92,9 @@ impl Player for Fish {
 
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn player_kind(&self) -> &PlayerKind {
+        return &self.player_kind;
     }
 }

@@ -2,7 +2,7 @@ use std::{cmp::max, fmt};
 
 use rand::{Rng, rng, rngs::ThreadRng, seq::SliceRandom};
 
-use crate::player::{Client, Fish, Player};
+use crate::player::{Client, Fish, Player, PlayerKind};
 
 mod player;
 
@@ -136,6 +136,14 @@ impl Engine {
             if new_game {
                 self.begin_round();
                 new_game = false;
+
+                if *self.players[0].player_kind() == PlayerKind::Client {
+                    println!("Your hand: {}", self.player_hand(0).as_str())
+                }
+
+                if *self.players[1].player_kind() == PlayerKind::Client {
+                    println!("Your hand: {}", self.player_hand(1).as_str())
+                }
             }
             let valid_actions = self.get_valid_actions();
             if valid_actions.is_empty() {
