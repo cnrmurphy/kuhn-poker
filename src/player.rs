@@ -22,7 +22,7 @@ pub struct Client {
 }
 
 impl Client {
-    fn new(name: String) -> Self {
+    pub fn new(name: String) -> Self {
         return Self { name };
     }
 }
@@ -46,7 +46,7 @@ pub struct Fish {
 }
 
 impl Fish {
-    fn new() -> Self {
+    pub fn new() -> Self {
         return Self {
             name: String::from("Fish"),
             rng: rng(),
