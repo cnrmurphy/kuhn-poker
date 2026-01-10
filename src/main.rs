@@ -102,7 +102,6 @@ impl Engine {
     }
 
     fn get_valid_actions(&self) -> Vec<PlayerAction> {
-        let is_last_player_to_act = self.game_state.actions.len() % 2 == 0; // The in position player
         match self.game_state.actions.as_slice() {
             [] => vec![PlayerAction::Check, PlayerAction::Bet],
             [PlayerAction::Check] => vec![PlayerAction::Check, PlayerAction::Bet],
