@@ -2,6 +2,11 @@ use std::fmt;
 
 use rand::{rng, rngs::ThreadRng, seq::SliceRandom};
 
+use crate::player::{Client, Fish, Player};
+
+mod player;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PlayerAction {
     Bet,
     Call,
@@ -65,11 +70,23 @@ impl GameState {
 pub struct Engine {
     game_state: GameState,
     rng: ThreadRng,
+    player_a: Box<dyn Player>,
+    player_b: Box<dyn Player>,
 }
 
 impl Engine {
-    fn new(game_state: GameState, rng: ThreadRng) -> Self {
-        return Self { game_state, rng };
+    fn new(
+        game_state: GameState,
+        rng: ThreadRng,
+        player_a: Box<dyn Player>,
+        player_b: Box<dyn Player>,
+    ) -> Self {
+        return Self {
+            game_state,
+            rng,
+            player_a,
+            player_b,
+        };
     }
 
     fn shuffle_and_deal(&mut self) {
@@ -80,8 +97,42 @@ impl Engine {
     }
 
     fn start_game(&mut self) {
+        let mut last_to_act = 1;
         while self.game_state.player_a_antes > 0 && self.game_state.player_b_antes > 0 {
             self.begin_round();
+            let valid_actions = self.get_valid_actions();
+            if valid_actions.is_empty() {
+                println!("game over");
+                println!(
+                    "{}: {}\n{}: {}",
+                    self.player_a.name(),
+                    self.game_state.player_a_hand.as_str(),
+                    self.player_b.name(),
+                    self.game_state.player_b_hand.as_str()
+                );
+                break;
+            }
+            if last_to_act == 1 {
+                let chosen_action = self.player_a.select_action(
+                    valid_actions,
+                    self.game_state.player_a_hand.as_str(),
+                    self.game_state.pot,
+                    self.game_state.player_a_antes,
+                );
+                println!("{} chose {}", self.player_a.name(), chosen_action);
+                last_to_act = 0;
+                self.game_state.actions.push(chosen_action);
+            } else {
+                let chosen_action = self.player_b.select_action(
+                    valid_actions,
+                    self.game_state.player_b_hand.as_str(),
+                    self.game_state.pot,
+                    self.game_state.player_b_antes,
+                );
+                println!("{} chose {}", self.player_b.name(), chosen_action);
+                last_to_act = 1;
+                self.game_state.actions.push(chosen_action);
+            }
         }
     }
 
@@ -122,13 +173,10 @@ impl Engine {
 }
 
 fn main() {
+    let player_a = Box::from(Fish::new());
+    let player_b = Box::from(Client::new(String::from("human")));
     let game_state = GameState::new();
-    let mut engine = Engine::new(game_state, rng());
+    let mut engine = Engine::new(game_state, rng(), player_a, player_b);
+    println!("{} vs {}", engine.player_a.name(), engine.player_b.name());
     engine.start_game();
-    println!(
-        "player_a: {}\nplayer_b: {}\npot: {}",
-        engine.game_state.player_a_hand.as_str(),
-        engine.game_state.player_b_hand.as_str(),
-        engine.game_state.pot
-    );
 }
