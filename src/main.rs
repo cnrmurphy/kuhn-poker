@@ -1,10 +1,24 @@
+use std::fmt;
+
 use rand::{rng, rngs::ThreadRng, seq::SliceRandom};
 
 pub enum PlayerAction {
-    BET,
-    CALL,
-    CHECK,
-    FOLD,
+    Bet,
+    Call,
+    Check,
+    Fold,
+}
+
+impl fmt::Display for PlayerAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            PlayerAction::Bet => "Bet",
+            PlayerAction::Call => "Call",
+            PlayerAction::Check => "Check",
+            PlayerAction::Fold => "Fold",
+        };
+        write!(f, "{s}")
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -31,6 +45,7 @@ pub struct GameState {
     player_b_antes: u64,
     player_a_hand: Card,
     player_b_hand: Card,
+    actions: Vec<PlayerAction>,
 }
 
 impl GameState {
@@ -42,6 +57,7 @@ impl GameState {
             player_b_antes: 100,
             player_a_hand: Card::J,
             player_b_hand: Card::Q,
+            actions: Vec::with_capacity(3),
         };
     }
 }
@@ -79,6 +95,30 @@ impl Engine {
         self.game_state.player_a_antes -= ante_cost;
         self.game_state.player_b_antes -= ante_cost;
         return ante_cost * 2;
+    }
+
+    fn request_action(&self, action: PlayerAction) {
+        let valid_actions = self.get_valid_actions();
+    }
+
+    fn get_valid_actions(&self) -> Vec<PlayerAction> {
+        let is_last_player_to_act = self.game_state.actions.len() % 2 == 0; // The in position player
+        match self.game_state.actions.as_slice() {
+            [] => vec![PlayerAction::Check, PlayerAction::Bet],
+            [PlayerAction::Check] => vec![PlayerAction::Check, PlayerAction::Bet],
+            [PlayerAction::Bet] => vec![PlayerAction::Fold, PlayerAction::Call],
+            [PlayerAction::Check, PlayerAction::Bet] => {
+                vec![PlayerAction::Fold, PlayerAction::Call]
+            }
+            [PlayerAction::Bet, PlayerAction::Fold]
+            | [PlayerAction::Bet, PlayerAction::Call]
+            | [PlayerAction::Check, PlayerAction::Bet, PlayerAction::Fold]
+            | [PlayerAction::Check, PlayerAction::Bet, PlayerAction::Call]
+            | [PlayerAction::Check, PlayerAction::Check] => {
+                vec![]
+            }
+            _ => vec![],
+        }
     }
 }
 
