@@ -1,6 +1,6 @@
-use std::fmt;
+use std::{cmp::max, fmt};
 
-use rand::{rng, rngs::ThreadRng, seq::SliceRandom};
+use rand::{Rng, rng, rngs::ThreadRng, seq::SliceRandom};
 
 use crate::player::{Client, Fish, Player};
 
@@ -26,7 +26,7 @@ impl fmt::Display for PlayerAction {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Card {
     J,
     Q,
@@ -44,24 +44,20 @@ impl Card {
 }
 
 pub struct GameState {
-    turn: u8,
+    button: usize,
     pot: u64,
-    player_a_antes: u64,
-    player_b_antes: u64,
-    player_a_hand: Card,
-    player_b_hand: Card,
+    player_antes: [u64; 2],
+    player_hands: [Card; 2],
     actions: Vec<PlayerAction>,
 }
 
 impl GameState {
     fn new() -> Self {
         return Self {
+            button: 0,
             pot: 0,
-            turn: 0,
-            player_a_antes: 100,
-            player_b_antes: 100,
-            player_a_hand: Card::J,
-            player_b_hand: Card::Q,
+            player_antes: [100, 100],
+            player_hands: [Card::J, Card::Q],
             actions: Vec::with_capacity(3),
         };
     }
@@ -70,8 +66,7 @@ impl GameState {
 pub struct Engine {
     game_state: GameState,
     rng: ThreadRng,
-    player_a: Box<dyn Player>,
-    player_b: Box<dyn Player>,
+    players: Vec<Box<dyn Player>>,
 }
 
 impl Engine {
@@ -84,67 +79,118 @@ impl Engine {
         return Self {
             game_state,
             rng,
-            player_a,
-            player_b,
+            players: vec![player_a, player_b],
         };
+    }
+
+    fn assign_button(&mut self) {
+        self.game_state.button = if self.rng.random_bool(0.5) { 0 } else { 1 }
+    }
+
+    fn button(&self) -> usize {
+        self.game_state.button
+    }
+
+    fn out_ouf_position_player(&self) -> usize {
+        if self.button() == 1 {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    fn player_to_act(&self) -> usize {
+        if self.game_state.actions.is_empty() || self.game_state.actions.len() % 2 == 0 {
+            return self.out_ouf_position_player();
+        } else {
+            return self.button();
+        }
     }
 
     fn shuffle_and_deal(&mut self) {
         let mut deck = [Card::J, Card::Q, Card::K];
+        self.assign_button();
         deck.shuffle(&mut self.rng);
-        self.game_state.player_a_hand = deck[0];
-        self.game_state.player_b_hand = deck[1];
+
+        // button is the last to act and last to be dealt
+        if self.button() == 0 {
+            self.game_state.player_hands[1] = deck[1];
+            self.game_state.player_hands[0] = deck[0];
+        } else {
+            self.game_state.player_hands[0] = deck[0];
+            self.game_state.player_hands[1] = deck[1];
+        }
+    }
+
+    fn player_hand(&self, ptr: usize) -> Card {
+        self.game_state.player_hands[ptr]
+    }
+
+    fn player_name(&self, ptr: usize) -> &str {
+        self.players[ptr].name()
     }
 
     fn start_game(&mut self) {
-        let mut last_to_act = 1;
-        while self.game_state.player_a_antes > 0 && self.game_state.player_b_antes > 0 {
-            self.begin_round();
+        let mut new_game = true;
+        while self.game_state.player_antes[0] > 0 && self.game_state.player_antes[1] > 0 {
+            if new_game {
+                self.begin_round();
+                new_game = false;
+            }
             let valid_actions = self.get_valid_actions();
             if valid_actions.is_empty() {
-                println!("game over");
                 println!(
                     "{}: {}\n{}: {}",
-                    self.player_a.name(),
-                    self.game_state.player_a_hand.as_str(),
-                    self.player_b.name(),
-                    self.game_state.player_b_hand.as_str()
+                    self.player_name(0),
+                    self.player_hand(0).as_str(),
+                    self.player_name(1),
+                    self.player_hand(1).as_str(),
                 );
-                break;
+                self.reward_winning_hand();
+                new_game = true;
+                continue;
             }
-            if last_to_act == 1 {
-                let chosen_action = self.player_a.select_action(
-                    valid_actions,
-                    self.game_state.player_a_hand.as_str(),
-                    self.game_state.pot,
-                    self.game_state.player_a_antes,
-                );
-                println!("{} chose {}", self.player_a.name(), chosen_action);
-                last_to_act = 0;
-                self.game_state.actions.push(chosen_action);
-            } else {
-                let chosen_action = self.player_b.select_action(
-                    valid_actions,
-                    self.game_state.player_b_hand.as_str(),
-                    self.game_state.pot,
-                    self.game_state.player_b_antes,
-                );
-                println!("{} chose {}", self.player_b.name(), chosen_action);
-                last_to_act = 1;
-                self.game_state.actions.push(chosen_action);
-            }
+
+            let active_player = self.player_to_act();
+
+            let chosen_action = self.players[active_player].select_action(
+                valid_actions,
+                self.game_state.player_hands[active_player].as_str(),
+                self.game_state.pot,
+                self.game_state.player_antes[active_player],
+            );
+            println!(
+                "{} chose {}",
+                self.players[active_player].name(),
+                chosen_action
+            );
+            self.game_state.actions.push(chosen_action);
         }
+    }
+
+    fn reward_winning_hand(&mut self) {
+        let winning_hand = max(self.player_hand(0), self.player_hand(1));
+        if winning_hand == self.player_hand(0) {
+            println!("{} wins {} antes", self.player_name(0), self.game_state.pot);
+            self.game_state.player_antes[0] += self.game_state.pot;
+        } else {
+            println!("{} wins {} antes", self.player_name(1), self.game_state.pot);
+            self.game_state.player_antes[1] += self.game_state.pot;
+        }
+        self.game_state.pot = 0;
     }
 
     fn begin_round(&mut self) {
         let antes_collected = self.collect_antes(1);
+        self.game_state.actions.clear();
+        self.game_state.pot = 0;
         self.game_state.pot += antes_collected;
         self.shuffle_and_deal();
     }
 
     fn collect_antes(&mut self, ante_cost: u64) -> u64 {
-        self.game_state.player_a_antes -= ante_cost;
-        self.game_state.player_b_antes -= ante_cost;
+        self.game_state.player_antes[0] -= ante_cost;
+        self.game_state.player_antes[1] -= ante_cost;
         return ante_cost * 2;
     }
 
@@ -177,6 +223,6 @@ fn main() {
     let player_b = Box::from(Client::new(String::from("human")));
     let game_state = GameState::new();
     let mut engine = Engine::new(game_state, rng(), player_a, player_b);
-    println!("{} vs {}", engine.player_a.name(), engine.player_b.name());
+    println!("{} vs {}", engine.player_name(0), engine.player_name(1));
     engine.start_game();
 }
