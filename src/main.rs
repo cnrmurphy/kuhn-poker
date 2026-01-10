@@ -194,10 +194,6 @@ impl Engine {
         return ante_cost * 2;
     }
 
-    fn request_action(&self, action: PlayerAction) {
-        let valid_actions = self.get_valid_actions();
-    }
-
     fn get_valid_actions(&self) -> Vec<PlayerAction> {
         match self.game_state.actions.as_slice() {
             [] => vec![PlayerAction::Check, PlayerAction::Bet],
