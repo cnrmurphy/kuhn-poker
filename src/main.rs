@@ -1,5 +1,6 @@
 use std::{cmp::max, fmt};
 
+use inquire::Action;
 use rand::{Rng, rng, rngs::ThreadRng, seq::SliceRandom};
 
 use crate::player::{Client, Fish, Player, PlayerKind};
@@ -136,6 +137,14 @@ impl Engine {
             if new_game {
                 self.begin_round();
                 new_game = false;
+                println!(
+                    "{} antes: {} | {} antes: {} | pot: {}",
+                    self.player_name(0),
+                    self.game_state.player_antes[0],
+                    self.player_name(1),
+                    self.game_state.player_antes[1],
+                    self.game_state.pot
+                );
 
                 if *self.players[0].player_kind() == PlayerKind::Client {
                     println!("Your hand: {}", self.player_hand(0).as_str())
@@ -167,11 +176,33 @@ impl Engine {
                 self.game_state.pot,
                 self.game_state.player_antes[active_player],
             );
-            println!(
-                "{} chose {}",
-                self.players[active_player].name(),
-                chosen_action
-            );
+
+            if chosen_action == PlayerAction::Fold {
+                let winner = if active_player == 0 { 1 } else { 0 };
+                println!("{} folds", self.player_name(active_player));
+                println!(
+                    "{} wins {} antes",
+                    self.player_name(winner),
+                    self.game_state.pot
+                );
+                self.game_state.player_antes[winner] += self.game_state.pot;
+                new_game = true;
+                println!("---------");
+                continue;
+            }
+
+            if chosen_action == PlayerAction::Bet {
+                println!("{} bet 1 ante", self.players[active_player].name());
+                self.game_state.pot += 1;
+                self.game_state.player_antes[active_player] -= 1
+            } else {
+                println!(
+                    "{} chose {}",
+                    self.players[active_player].name(),
+                    chosen_action
+                );
+            }
+
             self.game_state.actions.push(chosen_action);
         }
     }
@@ -185,14 +216,13 @@ impl Engine {
             println!("{} wins {} antes", self.player_name(1), self.game_state.pot);
             self.game_state.player_antes[1] += self.game_state.pot;
         }
-        self.game_state.pot = 0;
+        println!("---------");
     }
 
     fn begin_round(&mut self) {
         let antes_collected = self.collect_antes(1);
         self.game_state.actions.clear();
-        self.game_state.pot = 0;
-        self.game_state.pot += antes_collected;
+        self.game_state.pot = antes_collected;
         self.shuffle_and_deal();
     }
 
