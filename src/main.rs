@@ -1,9 +1,8 @@
 use std::{cmp::max, fmt};
 
-use inquire::Action;
 use rand::{Rng, rng, rngs::ThreadRng, seq::SliceRandom};
 
-use crate::player::{Client, Fish, Player, PlayerKind};
+use crate::player::{Agent, Client, Fish, Player, PlayerKind};
 
 mod player;
 
@@ -172,6 +171,7 @@ impl Engine {
 
             let chosen_action = self.players[active_player].select_action(
                 valid_actions,
+                &self.game_state.actions,
                 self.game_state.player_hands[active_player].as_str(),
                 self.game_state.pot,
                 self.game_state.player_antes[active_player],
@@ -253,7 +253,8 @@ impl Engine {
 }
 
 fn main() {
-    let player_a = Box::from(Fish::new());
+    let agent = Agent::from_file("./strategies/basic.json").unwrap();
+    let player_a = Box::from(agent);
     let player_b = Box::from(Client::new(String::from("human")));
     let game_state = GameState::new();
     let mut engine = Engine::new(game_state, rng(), player_a, player_b);
