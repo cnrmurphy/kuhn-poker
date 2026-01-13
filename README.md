@@ -28,7 +28,6 @@ There are 4 decision points where a player must act:
 
 ```json
 {
-  "name": "My Strategy",
   "strategy": {
     "J": {
       "start": { "check": 0.7, "bet": 0.3 },
