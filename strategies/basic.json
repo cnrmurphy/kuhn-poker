@@ -1,0 +1,23 @@
+{
+  "name": "Basic",
+  "strategy": {
+    "J": {
+      "start": { "check": 0.7, "bet": 0.3 },
+      "check": { "check": 0.7, "bet": 0.3 },
+      "bet": { "fold": 1.0, "call": 0.0 },
+      "check,bet": { "fold": 1.0, "call": 0.0 }
+    },
+    "Q": {
+      "start": { "check": 1.0, "bet": 0.0 },
+      "check": { "check": 1.0, "bet": 0.0 },
+      "bet": { "fold": 0.66, "call": 0.34 },
+      "check,bet": { "fold": 0.66, "call": 0.34 }
+    },
+    "K": {
+      "start": { "check": 0.3, "bet": 0.7 },
+      "check": { "check": 0.0, "bet": 1.0 },
+      "bet": { "fold": 0.0, "call": 1.0 },
+      "check,bet": { "fold": 0.0, "call": 1.0 }
+    }
+  }
+}
